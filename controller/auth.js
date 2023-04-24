@@ -108,11 +108,9 @@ const login = PromiseFC(async (req, res, next) =>  {
                 // user đã đăng nhập
                 await connection.promise().execute("UPDATE users SET auth = 2 WHERE phone= ?", [phone]);
                 const accessToken = provideAccessToken({
-                    fullname: data.fullname,
                     id: data.id,
                     role: data.role,
                     auth: data.auth,
-                    phone: data.phone
                 })
                 delete data.password;
                 const refreshToken = await provideRefreshToken(data.id);
@@ -168,10 +166,30 @@ const forgot = PromiseFC(async (req, res, next) => {
     }
 })
 
+const token = PromiseFC(async (req, res, next) => {
+    try {
+        const authHeader = req.header("Authorization");
+        const token = authHeader && authHeader.split(" ")[1];
+        if (!token) {
+            res.status(401).json({error: true, content: "You need authorization."});
+        }
+        const decoded = JWT.verify(token, "KEY_ACCESS_TOKEN");
+        const newAccessToken = provideAccessToken({
+            id: data.id,
+            role: data.role,
+            auth: data.auth,
+        })   
+        next();
+    } catch {
+        res.status(401).json({ error: true});
+    }
+})
+
 module.exports = {
     register,
     verify,
     login,
     logout,
-    forgot
+    forgot,
+    token
 }

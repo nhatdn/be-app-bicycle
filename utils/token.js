@@ -1,5 +1,6 @@
 const JWT = require("jsonwebtoken");
 const { connection } = require("../config")
+const httpStatus = require("http-status");
 
 
 const provideAccessToken = (data) => {
@@ -24,7 +25,25 @@ const provideRefreshToken = async (id) => {
     );
 }
 
+const verifyToken = (req, res, next) => {
+    try {
+        const authHeader = req.header("Authorization");
+        const token = authHeader && authHeader.split(" ")[1];
+        if (!token) {
+            res.status(httpStatus.UNAUTHORIZED).json({error: true, content: "You need authorization."});
+        }
+        const decoded = JWT.verify(token, "KEY_ACCESS_TOKEN");
+        req.id = decoded.id;
+        req.role = decoded.role;
+        req.auth = decoded.auth;
+        next();
+    } catch {
+        res.status(httpStatus.UNAUTHORIZED).json({ error: true, content: "Something is wrong."});
+    }
+};
+
 module.exports = {
     provideAccessToken,
-    provideRefreshToken
+    provideRefreshToken,
+    verifyToken
 }
