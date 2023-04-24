@@ -16,7 +16,7 @@ app.use(xss());
 app.use("/public/images", express.static(path.join(__dirname, "/public/images")));
 
 app.use((req, res, next) => {
-  if(req?.body?.phone?.startsWith("0")) {
+  if(req.body.phone.startsWith("0")) {
       req.body.phone = req.body.phone.replace("0", "+84");
   }
   next();
