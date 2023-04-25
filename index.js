@@ -1,3 +1,4 @@
+require('dotenv').config(".env");
 const { connection } = require("./config")
 const express = require("express")
 const app = express();
@@ -28,16 +29,16 @@ app.use((req, res, next) => {
 })
 
 
-app.use("/auth", auth);
-// connection.getConnection((err, connection) => {
-//   if (err) {
-//     console.log('Error connecting to MySQL database:', err);
-//     return;
-//   }
-//   console.log('Connected to MySQL database successfully!');
+app.use("/api/v1/auth", auth);
+connection.getConnection((err, connection) => {
+  if (err) {
+    console.log('Error connecting to MySQL database:', err);
+    return;
+  }
+  console.log('Connected to MySQL database successfully!');
   
-//   connection.release();
-// });
-app.listen(3000, () => {
-  console.log("http://localhost:3000");
+  connection.release();
+});
+app.listen(process.env.PORT_SERVER || 3000, () => {
+  console.log("http://localhost:" + (process.env.PORT_SERVER || 3000));
 })

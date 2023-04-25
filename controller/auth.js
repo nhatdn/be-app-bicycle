@@ -44,7 +44,8 @@ const register = PromiseFC(async (req, res, next) => {
             const code = randomSixDigitNumber();
             await sendSMS(phone, code);
             await connection.promise().execute("INSERT INTO users (fullname, phone, address, password, auth) VALUE (? , ? , ? , ?, ?)", [fullname, phone, address, md5(password), code.toString()]);
-            res.status(HttpStatus.OK).json({ result: "Chúng tôi đã gửi mã xác thực của bạn tới số điện thoại" + phone + ". Xin vui lòng kiểm tra trong hòm thư tin nhắn!." });
+            phone = phone.replace("+84", "0");
+            res.status(HttpStatus.OK).json({ result: "Chúng tôi đã gửi mã xác thực của bạn tới số điện thoại " + phone + ". Xin vui lòng kiểm tra trong hòm thư tin nhắn!." });
         }
     } catch (e) {
         console.log(e);
@@ -92,10 +93,6 @@ const login = PromiseFC(async (req, res, next) =>  {
         }
         password = md5(password);
         let [data] = await connection.promise().query("SELECT * FROM users WHERE phone = ? AND password = ?", [phone, password]);
-        console.log(phone);
-        console.log(password);
-        console.log("--------------");
-        console.log(data);
 
         if(data.length) {
             data = data[0];
