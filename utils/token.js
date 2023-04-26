@@ -6,9 +6,9 @@ const httpStatus = require("http-status");
 const provideAccessToken = (data) => {
     return JWT.sign(
         data,
-        "KEY_ACCESS_TOKEN",
+        JWT_KEY.KEY_ACCESS_TOKEN,
         {
-            expiresIn: "200s",
+            expiresIn: "1h",
         }
     );
 }
@@ -18,9 +18,9 @@ const provideRefreshToken = async (id) => {
     data = data[0];
     return JWT.sign(
         data,
-        JWT_KEY.KEY_ACCESS_TOKEN,
+        JWT_KEY.KEY_REFRESH_TOKEN,
         {
-            expiresIn: "2000s",
+            expiresIn: "10000h",
         }
     );
 }
@@ -30,15 +30,15 @@ const verifyToken = (req, res, next) => {
         const authHeader = req.header("Authorization");
         const token = authHeader && authHeader.split(" ")[1];
         if (!token) {
-            res.status(httpStatus.UNAUTHORIZED).json({error: true, content: "You need authorization."});
+            res.status(httpStatus.UNAUTHORIZED).json({ error: true, content: "You need authorization." });
         }
-        const decoded = JWT.verify(token, JWT_KEY.KEY_REFRESH_TOKEN);
+        const decoded = JWT.verify(token, JWT_KEY.KEY_ACCESS_TOKEN);
         req.id = decoded.id;
         req.role = decoded.role;
         req.auth = decoded.auth;
         next();
     } catch {
-        res.status(httpStatus.UNAUTHORIZED).json({ error: true, content: "Something is wrong."});
+        res.status(httpStatus.UNAUTHORIZED).json({ error: true, content: "Token của bạn đã hết hạn." });
     }
 };
 

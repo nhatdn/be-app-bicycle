@@ -1,4 +1,4 @@
-const { connection } = require("../config")
+const { connection, JWT_KEY } = require("../config")
 const HttpStatus = require("http-status");
 const { TWILO } = require("../config");
 const PromiseFC = require("../utils/promise");
@@ -36,9 +36,8 @@ const register = PromiseFC(async (req, res, next) => {
         return res.status(HttpStatus.BAD_REQUEST).json({error: "Thiếu dữ liệu"});
     }
     try {
-        //check account is exist
-        const [data] = await connection.promise().query("SELECT * FROM users where phone = ?", [phone]);
-        if (data?.length) {
+        const [[data]] = await connection.promise().query("SELECT * FROM users where phone = ?", [phone]);
+        if (data) {
             res.status(HttpStatus.BAD_REQUEST).json({ error: "Tên tài khoản hoặc số điện thoại của bạn đã được sử dụng, vui lòng thử lại!" });
         } else {
             const code = randomSixDigitNumber();
@@ -64,8 +63,7 @@ const verify = PromiseFC(async (req, res, next) => {
         })
     }
     try {
-        let [data] = await connection.promise().query("SELECT auth FROM users WHERE phone= ?", [phone])
-        data = data[0];
+        let [[data]] = await connection.promise().query("SELECT auth FROM users WHERE phone= ?", [phone])
         if(data?.auth == code) {
             await connection.promise().execute("UPDATE users SET auth=1 WHERE phone = ?", [phone]);
             res.status(HttpStatus.OK).json({ result: "Xác thực thành công, vui lòng quay lại trang login để đăng nhập!" });
@@ -92,11 +90,8 @@ const login = PromiseFC(async (req, res, next) =>  {
             })
         }
         password = md5(password);
-        let [data] = await connection.promise().query("SELECT * FROM users WHERE phone = ? AND password = ?", [phone, password]);
-
-        if(data.length) {
-            data = data[0];
-
+        let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ? AND password = ?", [phone, password]);
+        if(data) {
             if(data?.auth == 2) {
                 res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản của bạn đã được đăng nhập!" })
             } else if(data.auth != 1) {
@@ -124,7 +119,7 @@ const login = PromiseFC(async (req, res, next) =>  {
 
 const logout = PromiseFC(async (req, res, next) => {
     try {
-        const id = req.body.id;
+        const id = req.id;
         if(!id) {
             res.status(httpStatus.BAD_REQUEST).json({
                 error: "Thiếu dữ liệu"
@@ -140,18 +135,21 @@ const logout = PromiseFC(async (req, res, next) => {
 
 const forgot = PromiseFC(async (req, res, next) => {
     try {
-        const phone = req.body.phone;
+        let phone = req.body.phone;
         if(!phone) {
             res.status(httpStatus.BAD_REQUEST).json({
                 error: "Thiếu dữ liệu"
             })
         }
-        const [data] = await connection.promise().query("SELECT * FROM users WHERE phone = ?", [phone]);
-        if(data.length) {
+        console.log(phone);
+        const [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ?", [phone]);
+      
+        if(data) {
             const code = randomSixDigitNumber();
             await connection.promise().execute("UPDATE users SET auth= ? WHERE phone = ?", [code, phone]);
             await sendSMS(phone, code);
-            res.status(httpStatus.OK).json({ data: "Đăng xuất thành công" })
+            phone = phone.replace("+84", "0");
+            res.status(httpStatus.OK).json({ data: "Đã gửi mã xác thực tới số điện thoại " + phone + ". Xin vui lòng kiểm tra tin nhắn!." });
         } else {
             res.status(httpStatus.BAD_REQUEST).json({
                 error: "Số điện thoại của bạn không đúng!"
@@ -168,17 +166,22 @@ const token = PromiseFC(async (req, res, next) => {
         const authHeader = req.header("Authorization");
         const token = authHeader && authHeader.split(" ")[1];
         if (!token) {
-            res.status(401).json({error: true, content: "You need authorization."});
+            res.status(HttpStatus.BAD_REQUEST).json({error: true, content: "You need authorization."});
         }
-        const decoded = JWT.verify(token, "KEY_ACCESS_TOKEN");
-        const newAccessToken = provideAccessToken({
-            id: data.id,
-            role: data.role,
-            auth: data.auth,
-        })   
-        next();
+        const decoded = JWT.verify(token, JWT_KEY.KEY_REFRESH_TOKEN);
+        let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ? AND password = ?", [decoded.id]);
+        if(data?.auth == 2) {
+            const accessToken = provideAccessToken({
+                id: data.id,
+                role: data.role,
+                auth: data.auth,
+            })   
+            res.status(HttpStatus.OK).json({ accessToken });
+        } else {
+            res.status(HttpStatus.BAD_REQUEST).json({ error: "Tài khoản này đã đăng suất"});
+        }
     } catch {
-        res.status(401).json({ error: true});
+        res.status(HttpStatus.BAD_REQUEST).json({ error:  "Tài khoản này đã đăng suất hoặc mã xác thực phiên không đúng"});
     }
 })
 

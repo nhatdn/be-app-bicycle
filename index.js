@@ -3,10 +3,10 @@ const { connection } = require("./config")
 const express = require("express")
 const app = express();
 const auth = require("./router/auth");
+const user = require("./router/user");
 const cors = require('cors');
 const xss = require('xss-clean');
 const path = require("path");
-
 
 
 app.use(express.json());
@@ -30,6 +30,7 @@ app.use((req, res, next) => {
 
 
 app.use("/api/v1/auth", auth);
+app.use("/api/v1/user", user);
 connection.getConnection((err, connection) => {
   if (err) {
     console.log('Error connecting to MySQL database:', err);
