@@ -30,7 +30,7 @@ const verifyToken = (req, res, next) => {
         const authHeader = req.header("Authorization");
         const token = authHeader && authHeader.split(" ")[1];
         if (!token) {
-            res.status(httpStatus.UNAUTHORIZED).json({ error: true, content: "You need authorization." });
+            res.status(httpStatus.UNAUTHORIZED).json({ error: true, content: "Bạn cần cấp token." });
         }
         const decoded = JWT.verify(token, JWT_KEY.KEY_ACCESS_TOKEN);
         req.id = decoded.id;
