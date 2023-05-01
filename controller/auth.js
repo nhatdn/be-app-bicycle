@@ -95,28 +95,32 @@ const login = PromiseFC(async (req, res, next) =>  {
             })
         }
         password = md5(password);
-        let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ? AND password = ?", [phone, password]);
+        let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ?", [phone]);
         if(data) {
-            if(data.status == STATUS.LOGIN) {
-                res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản của bạn đã được đăng nhập!" })
-            } else if(data.status = 0 && data.code != NULL) {
-                res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản của bạn chưa được xác thực số điện thoại!" })
+            if(data.password == md5(password)) {
+                if(data.status == STATUS.LOGIN) {
+                    res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản của bạn đã được đăng nhập!" })
+                } else if(data.status = 0 && data.code != NULL) {
+                    res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản của bạn chưa được xác thực số điện thoại!" })
+                } else {
+                    await connection.promise().execute("UPDATE users SET status = ?, idDevice = ? WHERE phone= ?", [STATUS.LOGIN, idDevice, phone]);
+                    const accessToken = provideAccessToken({
+                        id: data.id,
+                        role: data.role,
+                        auth: data.auth,
+                        idDevice,
+                    })
+                    delete data.password;
+                    delete data.status;
+                    delete data.code;
+                    const refreshToken = await provideRefreshToken(data.id);
+                    res.status(httpStatus.OK).json({ data, accessToken, refreshToken })
+                }
             } else {
-                await connection.promise().execute("UPDATE users SET status = ?, idDevice = ? WHERE phone= ?", [STATUS.LOGIN, idDevice, phone]);
-                const accessToken = provideAccessToken({
-                    id: data.id,
-                    role: data.role,
-                    auth: data.auth,
-                    idDevice,
-                })
-                delete data.password;
-                delete data.status;
-                delete data.code;
-                const refreshToken = await provideRefreshToken(data.id);
-                res.status(httpStatus.OK).json({ data, accessToken, refreshToken })
+                res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản hoặc mật khẩu không đúng, vui lòng thử lại!" })
             }
         } else {
-            res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản hoặc mật khẩu không đúng, vui lòng thử lại!" })
+            res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản này chưa được đăng ký!" })
         }
     } catch(e) {
         console.log(e);
