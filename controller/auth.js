@@ -59,7 +59,7 @@ const register = PromiseFC(async (req, res, next) => {
 const verify = PromiseFC(async (req, res, next) => {
     const code = req.body.code;
     let phone = req.body.phone;
-    let idDevice = req.body.idDevice;
+    let idDevice = req.query.idDevice;
     if (!code || !phone) {
         res.status(httpStatus.BAD_REQUEST).json({
             error: "Thiếu dữ liệu"
@@ -73,6 +73,9 @@ const verify = PromiseFC(async (req, res, next) => {
         if (data.code == code && data.code != null) {
             if (data.status == STATUS.FORGOT_PASS) {
                 const uuid = UUID();
+                console.log({
+                    status: STATUS.AUTHENTICATED_CODE, idDevice, uuid, phone
+                });
                 await connection.promise().execute("UPDATE users SET code = NULL, status = ?, idDevice = ?, uuid = ? WHERE phone = ?", [STATUS.AUTHENTICATED_CODE, idDevice, uuid, phone]);
                 return res.status(HttpStatus.OK).json({ result: "Xác thực thành công, vui lòng nhập mật khẩu mới!", uuid });
             }
@@ -142,7 +145,10 @@ const logout = PromiseFC(async (req, res, next) => {
     try {
         const phone = req.phone;
         console.log(phone);
-        await connection.promise().execute("UPDATE users SET status = ? WHERE id = ?", [STATUS.LOGOUT, phone]);
+        if(!phone) {
+            return res.status(httpStatus.OK).json({ data: "Token đã hết hạn hoặc bị lỗi" })
+        }
+        await connection.promise().execute("UPDATE users SET status = ? WHERE phone = ?", [STATUS.LOGOUT, phone]);
         return res.status(httpStatus.OK).json({ data: "Đăng xuất thành công" })
     } catch (e) {
         console.log(e);
@@ -195,6 +201,7 @@ const token = PromiseFC(async (req, res, next) => {
                     id: data.id,
                     role: data.role,
                     auth: data.auth,
+                    phone: data.phone,
                 })
                 return res.status(HttpStatus.OK).json({ accessToken });
             } else {
