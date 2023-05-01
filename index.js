@@ -26,7 +26,7 @@ app.use((req, res, next) => {
   if(req?.body?.phone?.startsWith("0")) {
       req.body.phone = req.body.phone.replace("0", "+84");
   }
-  if(req.query.idDevice) {
+  if(!req.query.idDevice) {
     return res.status(httpStatus.BAD_REQUEST).json({error: "Thiếu Device ID"});
   }
   next();
