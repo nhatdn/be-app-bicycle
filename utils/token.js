@@ -14,8 +14,7 @@ const provideAccessToken = (data) => {
 }
 
 const provideRefreshToken = async (id) => {
-    let [data] = await connection.promise().query("SELECT fullname, id, role, auth, phone FROM users WHERE id= ?", [id])
-    data = data[0];
+    let [[data]] = await connection.promise().query("SELECT fullname, id, role, code, idDevice, phone FROM users WHERE id= ?", [id])
     return JWT.sign(
         data,
         JWT_KEY.KEY_REFRESH_TOKEN,

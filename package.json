@@ -30,6 +30,7 @@
     "redis": "^4.6.5",
     "sequelize": "^6.31.0",
     "twilio": "^4.10.0",
+    "uuid": "^9.0.0",
     "validator": "^13.9.0",
     "xss-clean": "^0.1.1"
   },
