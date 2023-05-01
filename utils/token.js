@@ -35,6 +35,8 @@ const verifyToken = (req, res, next) => {
         req.id = decoded.id;
         req.role = decoded.role;
         req.auth = decoded.auth;
+        req.phone = decoded.phone;
+        console.log(decoded);
         next();
     } catch {
         res.status(httpStatus.UNAUTHORIZED).json({ error: true, content: "Token của bạn đã hết hạn." });
