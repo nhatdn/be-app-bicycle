@@ -108,11 +108,10 @@ const login = PromiseFC(async (req, res, next) => {
         let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ?", [phone]);
         if (data) {
             if (data.password == password) {
-                if (data.status == STATUS.LOGIN) {
-                    return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_LOGINED })
-
-                } else if (data.status = STATUS.NOT_AUTH && data.code != NULL) {
+                if (data.status = STATUS.NOT_AUTH || data.code != null) {
                     return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_IS_NOT_AUTH })
+                } else if (data.status == STATUS.LOGIN) {
+                    return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_LOGINED })
                 } else {
                     await connection.promise().execute("UPDATE users SET status = ?, idDevice = ? WHERE phone= ?", [STATUS.LOGIN, idDevice, phone]);
                     const accessToken = provideAccessToken({
@@ -125,6 +124,7 @@ const login = PromiseFC(async (req, res, next) => {
                     delete data.password;
                     delete data.status;
                     delete data.code;
+                    delete data.uuid;
                     const refreshToken = await provideRefreshToken(data.id);
                     return res.status(httpStatus.OK).json({ data, accessToken, refreshToken })
                 }
