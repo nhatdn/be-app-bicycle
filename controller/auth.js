@@ -8,6 +8,7 @@ const httpStatus = require("http-status");
 const twilio = require("twilio")(TWILO.sid, TWILO.authToken);
 const { STATUS } = require("../constants");
 const UUID = require("../utils/uuid");
+const CODE_MSG = require("../constants/codeMSG");
 const {
     provideAccessToken,
     provideRefreshToken
@@ -37,12 +38,12 @@ const register = PromiseFC(async (req, res, next) => {
     let password = req.body.password;
     let idDevice = req.query.idDevice;
     if (!phone || !fullname || !address || !password || !idDevice) {
-        return res.status(HttpStatus.BAD_REQUEST).json({ error: "Thiếu dữ liệu" });
+        return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.LACK_DATA });
     }
     try {
         const [[data]] = await connection.promise().query("SELECT * FROM users where phone = ?", [phone]);
         if (data) {
-            return res.status(HttpStatus.BAD_REQUEST).json({ error: "Tên tài khoản hoặc số điện thoại của bạn đã được sử dụng, vui lòng thử lại!" });
+            return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_IS_EXISTED });
         } else {
             const code = randomSixDigitNumber();
             await sendSMS(phone, code);
@@ -69,7 +70,7 @@ const verify = PromiseFC(async (req, res, next) => {
     try {
         let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone= ?", [phone])
         if (!data) {
-            return res.status(HttpStatus.BAD_REQUEST).json({ error: "Tài khoản không tồn tại" });
+            return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.USERNAME_IS_NOT_EXISTED });
         }
         if (data.code == code && data.code != null) {
             if (data.status == STATUS.FORGOT_PASS) {
@@ -85,7 +86,7 @@ const verify = PromiseFC(async (req, res, next) => {
                 return res.status(HttpStatus.OK).json({ result: "Xác thực thành công, vui lòng quay lại trang login để đăng nhập!" });
             }
         } else {
-            return res.status(HttpStatus.BAD_REQUEST).json({ result: "Mã không đúng, vui lòng thử lại!." });
+            return res.status(HttpStatus.BAD_REQUEST).json({ result: CODE_MSG.CODE_IS_INCORRECT });
         }
     } catch (e) {
         console.log(e);
@@ -106,15 +107,12 @@ const login = PromiseFC(async (req, res, next) => {
         password = md5(password);
         let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ?", [phone]);
         if (data) {
-            if (data.status == STATUS.NOT_AUTH) {
-                return res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản này chưa được xác thực!" })
-            }
             if (data.password == password) {
                 if (data.status == STATUS.LOGIN) {
-                    return res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản của bạn đã được đăng nhập!" })
+                    return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_LOGINED })
 
-                } else if (data.status = 0 && data.code != NULL) {
-                    return res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản của bạn chưa được xác thực số điện thoại!" })
+                } else if (data.status = STATUS.NOT_AUTH && data.code != NULL) {
+                    return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_IS_NOT_AUTH })
                 } else {
                     await connection.promise().execute("UPDATE users SET status = ?, idDevice = ? WHERE phone= ?", [STATUS.LOGIN, idDevice, phone]);
                     const accessToken = provideAccessToken({
@@ -131,10 +129,10 @@ const login = PromiseFC(async (req, res, next) => {
                     return res.status(httpStatus.OK).json({ data, accessToken, refreshToken })
                 }
             } else {
-                return res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản hoặc mật khẩu không đúng, vui lòng thử lại!" })
+                return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.PASSWORD_IS_INCORRECT })
             }
         } else {
-            return res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản này chưa được đăng ký!" })
+            return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_IS_NOT_REGISTER })
         }
     } catch (e) {
         console.log(e);
@@ -150,7 +148,7 @@ const logout = PromiseFC(async (req, res, next) => {
             return res.status(httpStatus.OK).json({ data: "Token đã hết hạn hoặc bị lỗi" })
         }
         await connection.promise().execute("UPDATE users SET status = ? WHERE phone = ?", [STATUS.LOGOUT, phone]);
-        return res.status(httpStatus.OK).json({ data: "Đăng xuất thành công" })
+        return res.status(httpStatus.OK).json({ data: CODE_MSG.LOGOUT_SUCCESS })
     } catch (e) {
         console.log(e);
         return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: e });
@@ -178,7 +176,7 @@ const forgot = PromiseFC(async (req, res, next) => {
             return res.status(httpStatus.OK).json({ data: "Đã gửi mã xác thực tới số điện thoại " + phone + ". Xin vui lòng kiểm tra tin nhắn!." });
         } else {
             return res.status(httpStatus.BAD_REQUEST).json({
-                error: "Số điện thoại của bạn không đúng!"
+                error: CODE_MSG.USERNAME_IS_INCORRECT
             })
         }
     } catch (e) {
@@ -192,7 +190,7 @@ const token = PromiseFC(async (req, res, next) => {
         const authHeader = req.header("Authorization");
         const token = authHeader && authHeader.split(" ")[1];
         if (!token) {
-            res.status(HttpStatus.BAD_REQUEST).json({ error: true, content: "You need authorization." });
+            res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.NOT_REFRESH_TOKEN });
         }
         const decoded = JWT.verify(token, JWT_KEY.KEY_REFRESH_TOKEN);
         let [[data]] = await connection.promise().query("SELECT * FROM users WHERE id = ?", [decoded.id]);
@@ -206,14 +204,14 @@ const token = PromiseFC(async (req, res, next) => {
                 })
                 return res.status(HttpStatus.OK).json({ accessToken });
             } else {
-                return res.status(HttpStatus.BAD_REQUEST).json({ error: "Tài khoản này đã đăng suất" });
+                return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_LOGOUTED });
             }
         } else {
-            return res.status(HttpStatus.BAD_REQUEST).json({ error: "Đã có lỗi gì đó xãy ra, vui lòng thử lại sau." });
+            return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.SESSION_IS_INCORRECT });
         }
     } catch (e) {
         console.log(e);
-        return res.status(HttpStatus.BAD_REQUEST).json({ error: "Tài khoản này đã đăng suất hoặc mã xác thực phiên không đúng" });
+        return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
     }
 })
 
@@ -233,11 +231,11 @@ const newPassword = PromiseFC(async (req, res, next) => {
             await connection.promise().execute("UPDATE users SET password = ? WHERE phone = ?", [md5(password), phone]);
             return res.status(httpStatus.OK).json({ data: "Cập nhật mật khẩu thành công, quay lại trang login để tiếp tục!." });
         } else {
-            return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ error: "Không thể cập nhật mật khẩu vì không đúng thiết bị gửi yêu cầu cấp cấp mật khẩu mới." });
+            return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.DIFF_DEVICE });
         }
     } catch {
         console.log(e);
-        return res.status(HttpStatus.BAD_REQUEST).json({ error: "Tài khoản này đã đăng suất hoặc mã xác thực phiên không đúng" });
+        return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.SESSION_IS_INCORRECT });
     }
 })
 

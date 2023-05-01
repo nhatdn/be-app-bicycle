@@ -7,6 +7,7 @@ const user = require("./router/user");
 const cors = require('cors');
 const xss = require('xss-clean');
 const path = require("path");
+const httpStatus = require('http-status');
 
 
 app.use(express.json());
@@ -24,6 +25,9 @@ app.get("/api", (req, res) => {
 app.use((req, res, next) => {
   if(req?.body?.phone?.startsWith("0")) {
       req.body.phone = req.body.phone.replace("0", "+84");
+  }
+  if(req.query.idDevice) {
+    return res.status(httpStatus.BAD_REQUEST).json({error: "Thiếu Device ID"});
   }
   next();
 })
