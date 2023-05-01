@@ -70,13 +70,18 @@ const verify = PromiseFC(async (req, res, next) => {
         if(!data) {
             res.status(HttpStatus.BAD_REQUEST).json({ error: "Tài khoản không tồn tại" });
         }
-        if(data.code == code && data.code != null && data.status == STATUS.FORGOT_PASS) {
-            const uuid = UUID();
-            await connection.promise().execute("UPDATE users SET code = NULL, status = ?, idDevice = ? WHERE phone = ?", [STATUS.AUTHENTICATED_CODE, `${data.idDevice}-${uuid}`, phone]);
-            res.status(HttpStatus.OK).json({ result: "Xác thực thành công, vui lòng nhập mật khẩu mới!", uuid });
-        } else {
-            await connection.promise().execute("UPDATE users SET code=NULL, status=? WHERE phone = ?", [STATUS.LOGOUT, phone]);
-            res.status(HttpStatus.OK).json({ result: "Xác thực thành công, vui lòng quay lại trang login để đăng nhập!" });
+        if(data.code == code && data.code != null) {
+            if( data.status == STATUS.FORGOT_PASS) {
+                const uuid = UUID();
+                await connection.promise().execute("UPDATE users SET code = NULL, status = ?, idDevice = ? WHERE phone = ?", [STATUS.AUTHENTICATED_CODE, `${data.idDevice}-${uuid}`, phone]);
+                res.status(HttpStatus.OK).json({ result: "Xác thực thành công, vui lòng nhập mật khẩu mới!", uuid });
+            }
+            else if(data.status == STATUS.NOT_AUTH) {
+                await connection.promise().execute("UPDATE users SET code= NULL, status=? WHERE phone = ?", [STATUS.LOGOUT, phone]);
+                res.status(HttpStatus.OK).json({ result: "Xác thực thành công, vui lòng quay lại trang login để đăng nhập!" });
+            }
+        }  else {
+            res.status(HttpStatus.BAD_REQUEST).json({ result: "Mã không đúng, vui lòng thử lại!."});
         }
     } catch(e) {
         console.log(e);
@@ -97,7 +102,7 @@ const login = PromiseFC(async (req, res, next) =>  {
         password = md5(password);
         let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ?", [phone]);
         if(data) {
-            if(data.password == md5(password)) {
+            if(data.password == password) {
                 if(data.status == STATUS.LOGIN) {
                     res.status(httpStatus.BAD_REQUEST).json({ error: "Tài khoản của bạn đã được đăng nhập!" })
                 } else if(data.status = 0 && data.code != NULL) {
@@ -183,7 +188,7 @@ const token = PromiseFC(async (req, res, next) => {
         }
         const decoded = JWT.verify(token, JWT_KEY.KEY_REFRESH_TOKEN);
         let [[data]] = await connection.promise().query("SELECT * FROM users WHERE id = ?", [decoded.id]);
-        if(data.status == STATUS.LOGIN) {
+        if(data?.status == STATUS.LOGIN) {
             const accessToken = provideAccessToken({
                 id: data.id,
                 role: data.role,
