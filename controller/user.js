@@ -6,17 +6,19 @@ const CODE_MSG = require("../constants/codeMSG");
 
 const avatar = PromiseFC(async (req, res, next) => {
     try {
-        const file = req?.files['avatar']?.[0];
+        console.log(req.files);
+        const file = req?.files?.['avatar']?.[0];
         const id = req.id;
         if(!file) {
-            res.status(HttpStatus.BAD_REQUEST).json({ error: "Vui lòng upload ảnh đại diện!." });
+            return res.status(HttpStatus.BAD_REQUEST).json({ error: "Vui lòng upload ảnh đại diện!." });
         } else  {
             const path = file.destination + file.filename; 
             await connection.promise().execute("UPDATE users SET avatar = ? WHERE id = ?", [path, id]);
-            res.status(HttpStatus.OK).json({ data: CODE_MSG.UPDATE_AVATAR_SUCCESS, avatar: path });
+            return res.status(HttpStatus.OK).json({ data: CODE_MSG.UPDATE_AVATAR_SUCCESS, avatar: path });
         }
     } catch(e) {
-        res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
+        console.log(e);
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
     }
 })
 
