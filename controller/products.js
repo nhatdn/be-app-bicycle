@@ -8,7 +8,7 @@ const postProducts = PromiseFC((req, res, next) => {
     const name = req.body.name.trim();
     const idCategory = idCategory;
     const size = req.body.size;
-    if(!name || !idCategory || !size) {
+    if(!name || !idCategory || !size || !files) {
         res.status(HttpStatus.BAD_REQUEST).json({
             error: CODE_MSG.LACK_DATA
         })
