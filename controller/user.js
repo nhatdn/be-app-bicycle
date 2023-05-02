@@ -13,6 +13,7 @@ const avatar = PromiseFC(async (req, res, next) => {
             return res.status(HttpStatus.BAD_REQUEST).json({ error: "Vui lòng upload ảnh đại diện!." });
         } else  {
             const path = file.destination + file.filename; 
+            path = path.substring(1);
             await connection.promise().execute("UPDATE users SET avatar = ? WHERE id = ?", [path, id]);
             return res.status(HttpStatus.OK).json({ data: CODE_MSG.UPDATE_AVATAR_SUCCESS, avatar: path });
         }

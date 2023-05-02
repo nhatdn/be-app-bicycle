@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage });
-const cpUpload = upload.fields([{ name: 'avatar', maxCount: 1 }])
+const cpUpload = upload.fields([{ name: 'avatar', maxCount: 3 }])
 
 router.post("/upload-avatar", verifyToken, cpUpload, avatar);
 router.post("/change-profile", verifyToken, changeProfile);
