@@ -48,12 +48,11 @@ const register = PromiseFC(async (req, res, next) => {
             const code = randomSixDigitNumber();
             await sendSMS(phone, code);
             await connection.promise().execute("INSERT INTO users (fullname, phone, address, password, code, idDevice) VALUE (? , ? , ? , ?, ?, ?)", [fullname, phone, address, md5(password), code.toString(), idDevice]);
-            phone = phone.replace("+84", "0");
-            return res.status(HttpStatus.OK).json({ result: "Chúng tôi đã gửi mã xác thực của bạn tới số điện thoại " + phone + ". Xin vui lòng kiểm tra trong hòm thư tin nhắn!." });
+            return res.status(HttpStatus.OK).json({ data: CODE_MSG.SEND_SMS_SUCCESS });
         }
     } catch (e) {
         console.log(e);
-        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: e });
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
     }
 });
 
@@ -64,11 +63,11 @@ const verify = PromiseFC(async (req, res, next) => {
     let idDevice = req.query.idDevice;
     if (!code || !phone) {
         res.status(httpStatus.BAD_REQUEST).json({
-            error: "Thiếu dữ liệu"
+            error: CODE_MSG.LACK_DATA
         })
     }
     try {
-        let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone= ?", [phone])
+        let [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ?", [phone])
         if (!data) {
             return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.USERNAME_IS_NOT_EXISTED });
         }
@@ -79,18 +78,18 @@ const verify = PromiseFC(async (req, res, next) => {
                     status: STATUS.AUTHENTICATED_CODE, idDevice, uuid, phone
                 });
                 await connection.promise().execute("UPDATE users SET code = NULL, status = ?, idDevice = ?, uuid = ? WHERE phone = ?", [STATUS.AUTHENTICATED_CODE, idDevice, uuid, phone]);
-                return res.status(HttpStatus.OK).json({ result: "Xác thực thành công, vui lòng nhập mật khẩu mới!", uuid });
+                return res.status(HttpStatus.OK).json({ data: CODE_MSG.AUTH_FORGOT_PASSWORD_SUCCESS , uuid });
             }
             else if (data.status == STATUS.NOT_AUTH) {
                 await connection.promise().execute("UPDATE users SET code= NULL, status=? WHERE phone = ?", [STATUS.LOGOUT, phone]);
-                return res.status(HttpStatus.OK).json({ result: "Xác thực thành công, vui lòng quay lại trang login để đăng nhập!" });
+                return res.status(HttpStatus.OK).json({ data: CODE_MSG.AUTH_SUCCESS });
             }
         } else {
-            return res.status(HttpStatus.BAD_REQUEST).json({ result: CODE_MSG.CODE_IS_INCORRECT });
+            return res.status(HttpStatus.BAD_REQUEST).json({ data: CODE_MSG.CODE_IS_INCORRECT });
         }
     } catch (e) {
         console.log(e);
-        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: e });
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
     }
 })
 
@@ -101,7 +100,7 @@ const login = PromiseFC(async (req, res, next) => {
         let password = req.body.password;
         if (!password || !phone) {
             return res.status(httpStatus.BAD_REQUEST).json({
-                error: "Thiếu dữ liệu"
+                error: CODE_MSG.LACK_DATA
             })
         }
         password = md5(password);
@@ -129,7 +128,7 @@ const login = PromiseFC(async (req, res, next) => {
                     return res.status(httpStatus.OK).json({ data, accessToken, refreshToken })
                 }
             } else {
-                return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.PASSWORD_IS_INCORRECT })
+                return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_IS_INCORRECT })
             }
         } else {
             return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.ACCOUNT_IS_NOT_REGISTER })
@@ -145,13 +144,13 @@ const logout = PromiseFC(async (req, res, next) => {
         const phone = req.phone;
         console.log(phone);
         if(!phone) {
-            return res.status(httpStatus.OK).json({ data: "Token đã hết hạn hoặc bị lỗi" })
+            return res.status(httpStatus.BAD_REQUEST).json({ error: CODE_MSG.ERROR_TOKEN })
         }
         await connection.promise().execute("UPDATE users SET status = ? WHERE phone = ?", [STATUS.LOGOUT, phone]);
         return res.status(httpStatus.OK).json({ data: CODE_MSG.LOGOUT_SUCCESS })
     } catch (e) {
         console.log(e);
-        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: e });
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
     }
 })
 
@@ -173,7 +172,7 @@ const forgot = PromiseFC(async (req, res, next) => {
             await connection.promise().execute("UPDATE users SET code= ?, status = ?, idDevice = ? WHERE phone = ?", [code, STATUS.FORGOT_PASS, idDevice, phone]);
             await sendSMS(phone, code);
             phone = phone.replace("+84", "0");
-            return res.status(httpStatus.OK).json({ data: "Đã gửi mã xác thực tới số điện thoại " + phone + ". Xin vui lòng kiểm tra tin nhắn!." });
+            return res.status(httpStatus.OK).json({ data: CODE_MSG.SEND_SMS_SUCCESS });
         } else {
             return res.status(httpStatus.BAD_REQUEST).json({
                 error: CODE_MSG.USERNAME_IS_INCORRECT
@@ -181,7 +180,7 @@ const forgot = PromiseFC(async (req, res, next) => {
         }
     } catch (e) {
         console.log(e);
-        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: e });
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
     }
 })
 
@@ -211,7 +210,7 @@ const token = PromiseFC(async (req, res, next) => {
         }
     } catch (e) {
         console.log(e);
-        return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
     }
 })
 
@@ -223,19 +222,19 @@ const newPassword = PromiseFC(async (req, res, next) => {
         let uuid = req.body.uuid;
         if (!uuid || !password || !phone || !idDevice) {
             return res.status(httpStatus.BAD_REQUEST).json({
-                error: "Thiếu dữ liệu"
+                error: CODE_MSG.LACK_DATA
             })
         }
         const [[data]] = await connection.promise().query("SELECT * FROM users WHERE phone = ?", [phone]);
         if (data.uuid == uuid && data.idDevice == idDevice) {
             await connection.promise().execute("UPDATE users SET password = ? WHERE phone = ?", [md5(password), phone]);
-            return res.status(httpStatus.OK).json({ data: "Cập nhật mật khẩu thành công, quay lại trang login để tiếp tục!." });
+            return res.status(httpStatus.OK).json({ data: CODE_MSG.UPDATE_PASSWORD_SUCCESS });
         } else {
             return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.DIFF_DEVICE });
         }
     } catch {
         console.log(e);
-        return res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.SESSION_IS_INCORRECT });
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: CODE_MSG.SOMETHING_IS_WRONG });
     }
 })
 
