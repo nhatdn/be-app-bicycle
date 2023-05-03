@@ -192,8 +192,7 @@ const forgot = PromiseFC(async (req, res, next) => {
 
 const token = PromiseFC(async (req, res, next) => {
     try {
-        const authHeader = req.header("Authorization");
-        const token = authHeader && authHeader.split(" ")[1];
+        const token = req.body.refreshToken;
         if (!token) {
             res.status(HttpStatus.BAD_REQUEST).json({ error: CODE_MSG.NOT_REFRESH_TOKEN });
         }

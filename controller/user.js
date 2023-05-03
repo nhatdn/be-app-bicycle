@@ -3,7 +3,7 @@ const HttpStatus = require("http-status");
 const PromiseFC = require("../utils/promise");
 const md5 = require("md5");
 const CODE_MSG = require("../constants/codeMSG");
-const momment = require("moment");
+const moment = require("moment");
 
 const avatar = PromiseFC(async (req, res, next) => {
     try {
@@ -33,7 +33,7 @@ const changeProfile = PromiseFC(async (req, res, next) => {
         if (fullname) {
             await connection.promise().execute("UPDATE users SET fullname = ? WHERE id = ?", [fullname, id]);
         }
-        if (moment(birthday, "DD/MM/YYYY", true).isValid()) {
+        if (moment(birthday, "YYYY-MM-DD", true).isValid()) {
             await connection.promise().execute("UPDATE users SET birthday = ? WHERE id = ?", [birthday, id]);
         } else {
             res.status(HttpStatus.OK).json({ data: CODE_MSG.DATA_BIRTHDAY_IS_INCORRECT });
