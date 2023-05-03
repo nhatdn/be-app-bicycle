@@ -4,11 +4,13 @@ const express = require("express")
 const app = express();
 const auth = require("./router/auth");
 const user = require("./router/user");
+const products = require("./router/products");
 const cors = require('cors');
 const xss = require('xss-clean');
 const path = require("path");
 const httpStatus = require('http-status');
-
+const md5 = require("md5");
+console.log(md5(123123));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
@@ -35,6 +37,7 @@ app.use((req, res, next) => {
 
 app.use("/api/v1/auth", auth);
 app.use("/api/v1/user", user);
+app.use("/api/v1/products", products);
 connection.getConnection((err, connection) => {
   if (err) {
     console.log('Error connecting to MySQL database:', err);

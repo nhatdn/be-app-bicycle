@@ -2,7 +2,7 @@ const { Router } = require("express");
 const { postProducts } = require("../controller/products");
 const { verifyToken } = require("../utils/token");
 const router = Router();
-
+const multer = require('multer');
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage });
-const cpUpload = upload.fields([{ name: 'avatar', maxCount: 3 }])
+const cpUpload = upload.fields([{ name: 'covers', maxCount: 4 }])
 
 router.post("/post-products", verifyToken, cpUpload, postProducts);
 
